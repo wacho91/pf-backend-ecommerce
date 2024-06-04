@@ -1,0 +1,6 @@
+#Ocultar carga de carpetas al repo
+
+/node_modules
+.env
+package-lock.json
+upload/
