@@ -8,41 +8,38 @@ const loadDb = async () => {
   return getDb;
 };
 
-
-const obtenerProductos = async(req, res, next) => {
-    try {
-        const getDb = await loadDb();
-        if(!getDb.length) {
-            // si la bd esta vacia llamo a la api de productos para cargar los datos a la db
-            const productos = getDb();
-            let response = productos.map(p => {
-                return {
-                    id: p.id,
-                    titulo: p.titulo,
-                    miniatura: p.miniatura,
-                    precio: p.precio,
-                    cantidadVendida: p.cantidadVendida,
-                    cantidadDisponible: p.cantidadDisponible,
-                    idCategoria: p.idCategoria,
-                    categoria: p.categoria
-                }
-            });
-            await Productos.bulkCreate(response);
-            res.status(200).send(response);
-        } else {
-            const { titulo } = req.query;
-            if (titulo) {
-              const findProduct = await Productos.findAll({ where: { titulo: { [Op.iLike]: `%${titulo}%` } } });
-              findProduct.length ? res.status(200).send(findProduct) : res.status(404).send('No se encontraron productos');
-            }
-            else {
-              res.status(200).send(getDb)
-            };
-        };
-    } catch (error) {
-        console.log(error);
-    }
-}
+const obtenerProductos = async (req, res, next) => {
+  try {
+    const getDb = await loadDb();
+    if (!getDb.length) {
+      const products = api.map(p => {
+        return {
+          id: dato.id,
+          titulo: dato.title,
+          miniatura: dato.thumbnail,
+          precio: dato.price,
+          cantidadVendida: dato.sold_quantity,
+          cantidadDisponible: dato.available_quantity,
+          idCategoria: dato.category_id,
+          categoria: dato.category_id === "FB100" ? "Jeans" : dato.category_id === "FB110" ? "Blusas" : dato.category_id === "FB120" ? "Vestidos" : dato.category_id === "FB130" && "Chaquetas"
+        }
+      });
+      await Productos.bulkCreate(products);
+      res.status(200).send(products);
+    } else {
+      const { name } = req.query;
+      if (name) {
+        const findProduct = await Productos.findAll({ where: { name: { [Op.iLike]: `%${name}%` } } });
+        findProduct.length ? res.status(200).send(findProduct) : res.status(404).send('Product not found');
+      }
+      else {
+        res.status(200).send(getDb)
+      };
+    };
+  } catch (error) {
+    next(error);
+  };
+};
 
 const obtenerProducto = async (req, res, next) => {
   try {
