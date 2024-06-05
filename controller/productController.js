@@ -13,8 +13,6 @@ const obtenerProductos = async(req, res, next) => {
     try {
         const getDb = await loadDb();
         if(!getDb.length) {
-            // si la bd esta vacia llamo a la api de productos para cargar los datos a la db
-            const productos = getDb;
             let response = productos.map(p => {
                 return {
                     id: p.id,
