@@ -1,13 +1,20 @@
 const { Productos } = require("../db/db.js");
-const { Op, where } = require("sequelize");
+const { Op } = require("sequelize");
+const cloudinary = require('cloudinary').v2;
 const fs = require('fs');
 const path = require('path');
+
+// Configura Cloudinary con tus credenciales
+cloudinary.config({
+  cloud_name: 'deacm87l9',
+  api_key: '174661533793152',
+  api_secret: 'y3t4sKW0S_klH7obNlBKgrsyFiU'
+});
 
 const loadDb = async () => {
   const getDb = await Productos.findAll();
   return getDb;
 };
-
 
 const obtenerProductos = async(req, res, next) => {
   try {
@@ -54,9 +61,7 @@ const obtenerProducto = async (req, res, next) => {
   };
 };
 
-
 const crearProducto = async (req, res, next) => {
-  
   try {
     const { titulo, miniatura, precio, cantidadVendida, cantidadDisponible, idCategoria } = req.body;
 
@@ -65,23 +70,12 @@ const crearProducto = async (req, res, next) => {
       return res.status(400).send("No se llenaron todos los campos requeridos");
     }
 
-    let decodificarLink = Buffer.from(miniatura, 'base64');
-    let nombreImagenGuardada = `${Date.now()}.png`;
-    let AlmacenamientoLinkImagen = path.join(__dirname, '../upload', nombreImagenGuardada);
-    let linkImagenARenderizar = `upload/${nombreImagenGuardada}`;
-
-    // Crea la carpeta 'upload' si no existe
-    const directorioUpload = path.join(__dirname, '../upload');
-    if (!fs.existsSync(directorioUpload)) {
-      fs.mkdirSync(directorioUpload);
-    }
-
-    // Escribe el archivo de la imagen en la carpeta 'upload'
-    fs.writeFileSync(AlmacenamientoLinkImagen, decodificarLink);
+    // Subir imagen a Cloudinary
+    const resultado = await cloudinary.uploader.upload(miniatura, { folder: "productos" });
 
     const crearProducto = await Productos.create({
       id: `FB${Math.round(Math.random() * 1000000000)}`,
-      miniatura: `http://localhost:3001/${linkImagenARenderizar}`,
+      miniatura: resultado.secure_url,
       titulo,
       precio,
       cantidadVendida: cantidadVendida || 0,
@@ -94,9 +88,7 @@ const crearProducto = async (req, res, next) => {
   } catch (error) {
     next(error);
   }
-
 };
-
 
 const productoActualizar = async (req, res, next) => {
   try {
@@ -116,13 +108,9 @@ const productoActualizar = async (req, res, next) => {
     };
 
     if (miniatura) {
-      const decodificarLink = Buffer.from(miniatura, 'base64');
-      const nombreImagenGuardada = `${Date.now()}.png`;
-      const AlmacenamientoLinkImagen = `upload/${nombreImagenGuardada}`;
-      fs.writeFileSync(AlmacenamientoLinkImagen, decodificarLink);
-      actualizacion.miniatura = `http://localhost:3001/${AlmacenamientoLinkImagen}`;
-    } else {
-      actualizacion.miniatura = producto.miniatura;
+      // Subir nueva imagen a Cloudinary
+      const resultado = await cloudinary.uploader.upload(miniatura, { folder: "productos" });
+      actualizacion.miniatura = resultado.secure_url;
     }
 
     await producto.update(actualizacion);
@@ -132,7 +120,6 @@ const productoActualizar = async (req, res, next) => {
     next(error);
   }
 };
-
 
 const eliminarProducto = async (req, res, next) => {
   try {
@@ -166,7 +153,6 @@ const actualizarStockProductos = async (req, res, next) => {
   };
 };
 
-
 module.exports = {
   crearProducto,
   obtenerProductos,
@@ -174,4 +160,4 @@ module.exports = {
   productoActualizar,
   eliminarProducto,
   actualizarStockProductos
-}
+};
