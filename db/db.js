@@ -4,22 +4,48 @@ const fs = require('fs');
 const path = require('path');
 const { Sequelize } = require('sequelize');
 const {
-  DB_USER, DB_PASSWORD, DB_HOST, DB_NAME, NODE_ENV, DB_PORT, DB_DEPLOY
+  DB_USER, DB_PASSWORD, DB_HOST, DB_NAME, NODE_ENV,
 } = process.env;
 
-const sequelize = new Sequelize(
-  `${DB_DEPLOY}` || `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}`,
-  
-  {
-    logging: false, // set to console.log to see the raw SQL queries
-    native: false, // lets Sequelize know we can use pg-native for ~30% more speed
-    dialectOptions: {
-      ssl: {
-        require: true,
-      },
-    },
-  }
-);
+let sequelize;
+
+if (NODE_ENV === "production") {
+    sequelize = new Sequelize({
+        database: DB_NAME,
+        dialect: "postgres",
+        host: DB_HOST,
+        port: 5432,
+        username: DB_USER,
+        password: DB_PASSWORD,
+        pool: {
+            max: 3,
+            min: 1,
+            idle: 10000,
+        },
+        dialectOptions: {
+            ssl: {
+                require: true,
+                rejectUnauthorized: false, // Esto puede ser necesario si tu certificado SSL no está firmado por una CA de confianza
+            },
+            keepAlive: true,
+        },
+        ssl: true,
+    });
+} else {
+    sequelize = new Sequelize(
+        `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${DB_NAME}`,
+        { 
+            logging: false, 
+            native: false,
+            dialectOptions: {
+                ssl: {
+                    require: true,
+                    rejectUnauthorized: false, // Esto puede ser necesario si tu certificado SSL no está firmado por una CA de confianza
+                }
+            },
+        }
+    );
+}
 
 // const sequelize = new Sequelize(`postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`, {
 //   logging: false,
