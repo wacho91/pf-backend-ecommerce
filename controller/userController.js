@@ -63,24 +63,39 @@ const loguearUsuario = async (req, res, next) => {
   }
 };
 
-const obtenerUsuarios = async(req, res, next) => {
+const obtenerUsuarios = async (req, res, next) => {
   try {
     const { id, nombre } = req.query;
+
     if (id) {
       const usuario = await Usuarios.findByPk(id);
-      usuario ? res.send(usuario) : res.status(404).send("Usuario no encontrado");
+      if (usuario) {
+        return res.send(usuario);
+      } else {
+        return res.status(404).send("Usuario no encontrado");
+      }
     }
+
     if (nombre) {
       const usuario = await Usuarios.findAll({ where: { nombre: { [Op.iLike]: `%${nombre}%` } } });
-      usuario.length ? res.send(usuario) : res.status(404).send("Usuario no encontrado");
+      if (usuario.length) {
+        return res.send(usuario);
+      } else {
+        return res.status(404).send("Usuario no encontrado");
+      }
+    }
+
+    const usuarios = await Usuarios.findAll();
+    if (usuarios.length) {
+      return res.send(usuarios);
     } else {
-      const usuarios = await Usuarios.findAll();
-      usuarios.length ? res.send(usuarios) : res.status(404).send("No existen usuarios registrados");
+      return res.status(404).send("No existen usuarios registrados");
     }
   } catch (error) {
     next(error);
   }
 };
+
 
 const actualizarUsuario = async (req, res, next) => {
   try {
