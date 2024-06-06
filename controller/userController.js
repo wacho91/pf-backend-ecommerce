@@ -1,11 +1,8 @@
 const { Usuarios } = require("../db/db.js");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
-const { where } = require("sequelize");
 const { Op } = require('sequelize');
-const fs = require('fs');
-
-
+const cloudinary = require('../config/cloudinaryConfig.js'); // Importar configuración de Cloudinary
 
 const registrarUsuario = async (req, res, next) => {
   try {
@@ -23,13 +20,8 @@ const registrarUsuario = async (req, res, next) => {
     
     // Manejar la imagen si se proporciona
     if (imagen) {
-      const decodificarLink = Buffer.from(imagen, 'base64');
-      const nombreImagenGuardada = `${Date.now()}.png`;
-      const AlmacenamientoLinkImagen = `upload/${nombreImagenGuardada}`;
-      linkImagenARenderizar = `upload/${nombreImagenGuardada}`;
-      
-      // Guardar la imagen en el sistema de archivos
-      fs.writeFileSync(AlmacenamientoLinkImagen, decodificarLink);
+      const subirImagen = await cloudinary.uploader.upload(`data:image/png;base64,${imagen}`);
+      linkImagenARenderizar = subirImagen.secure_url;
     }
     
     // Crear el usuario
@@ -37,7 +29,7 @@ const registrarUsuario = async (req, res, next) => {
       id: `${Math.round(Math.random() * 1000000000)}`,
       nombre,
       apellido,
-      imagen: linkImagenARenderizar ? `http://localhost:3001/${linkImagenARenderizar}` : null,
+      imagen: linkImagenARenderizar ? linkImagenARenderizar : null,
       email,
       contraseña: encriptarContraseña,
       celular,
@@ -52,28 +44,24 @@ const registrarUsuario = async (req, res, next) => {
   }
 };
 
-
 const loguearUsuario = async (req, res, next) => {
-
   try {
-    const {email, contraseña} = req.body;
+    const { email, contraseña } = req.body;
     const usuario = await Usuarios.findOne({ where: { email } });
     if (usuario && (await bcrypt.compare(contraseña, usuario.contraseña))) {
       const token = jwt.sign({ usuario_id: usuario.id, email }, "secret", { expiresIn: "10h" });
       usuario.token = token;
       res.status(201).json({
-        "usuario": usuario,
-        "token": token
+        usuario: usuario,
+        token: token
       });
     } else {
       res.status(404).send("Datos incorrectos");
-    };
+    }
   } catch (error) {
     next(error);
   }
-
-}
-
+};
 
 const obtenerUsuarios = async(req, res, next) => {
   try {
@@ -81,18 +69,18 @@ const obtenerUsuarios = async(req, res, next) => {
     if (id) {
       const usuario = await Usuarios.findByPk(id);
       usuario ? res.send(usuario) : res.status(404).send("Usuario no encontrado");
-    };
+    }
     if (nombre) {
       const usuario = await Usuarios.findAll({ where: { nombre: { [Op.iLike]: `%${nombre}%` } } });
       usuario.length ? res.send(usuario) : res.status(404).send("Usuario no encontrado");
     } else {
       const usuarios = await Usuarios.findAll();
       usuarios.length ? res.send(usuarios) : res.status(404).send("No existen usuarios registrados");
-    };
+    }
   } catch (error) {
     next(error);
   }
-}
+};
 
 const actualizarUsuario = async (req, res, next) => {
   try {
@@ -113,10 +101,10 @@ const actualizarUsuario = async (req, res, next) => {
 
     if (req.body.imagen) {
       try {
-        const { imagen, nombreImagenGuardada, linkImagenARenderizar } = await guardarImagen(req.body.imagen);
-        datosActualizados.imagen = `http://localhost:3001/${linkImagenARenderizar}`;
+        const subirImagen = await cloudinary.uploader.upload(`data:image/png;base64,${req.body.imagen}`);
+        datosActualizados.imagen = subirImagen.secure_url;
       } catch (error) {
-        // Manejar errores relacionados con guardarImagen
+        // Manejar errores relacionados con la carga de la imagen
         return next(error);
       }
     }
@@ -134,21 +122,6 @@ const actualizarUsuario = async (req, res, next) => {
   }
 };
 
-
-
-
-const guardarImagen = async (imagenBase64) => {
-  const decodificarLink = Buffer.from(imagenBase64, 'base64');
-  const nombreImagenGuardada = `${Date.now()}.png`;
-  const AlmacenamientoLinkImagen = `upload/${nombreImagenGuardada}`;
-  const linkImagenARenderizar = `upload/${nombreImagenGuardada}`;
-
-  fs.writeFileSync(AlmacenamientoLinkImagen, decodificarLink);
-
-  return { imagen: decodificarLink, nombreImagenGuardada, linkImagenARenderizar };
-};
-
-
 const borrarUsuario = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -156,7 +129,7 @@ const borrarUsuario = async (req, res, next) => {
     res.send({ destroy: true, eliminar });
   } catch (error) {
     next(error);
-  };
+  }
 };
 
 module.exports = {
